@@ -2,7 +2,7 @@ name: Deploy Angular to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [develop]
   workflow_dispatch:
 
 permissions:
@@ -21,9 +21,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx ng build --configuration production --base-href /MicroCultivos/
+      - run: ls -R dist | head -30
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/NOMBRE-PROYECTO/browser
+          path: dist/MicroCultivos/browser
 
   deploy:
     needs: build
