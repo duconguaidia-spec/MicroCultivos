@@ -1,0 +1,108 @@
+<header>
+  <h1>Maqueta IoT</h1>
+  <div class="conexion">
+    <span class="punto" [class.ok]="conectadoBroker"></span>
+    Broker: {{ conectadoBroker ? 'conectado' : 'desconectado' }}
+    <span class="punto" [class.ok]="conectadoESP32"></span>
+    ESP32: {{ conectadoESP32 ? 'en línea' : 'fuera de línea' }}
+  </div>
+</header>
+
+@if (intrusion) {
+<div class="alerta">
+  ALERTA: se detectó una presencia
+  <button (click)="confirmarAlerta()">Entendido</button>
+</div>
+}
+
+<main>
+
+    <section class="card">
+    <h2>Ambiente</h2>
+    <p class="grande">{{ temp ?? '--' }} °C</p>
+    <p>Humedad del aire: {{ hum ?? '--' }} %</p>
+    <small>Última actualización: {{ ultimaActualizacion }}</small>
+  </section>
+
+  <section class="card">
+    <h2>Tierra y riego</h2>
+    <p class="grande">{{ suelo ?? '--' }} %</p>
+    <div class="barra">
+      <div [style.width.%]="suelo ?? 0"></div>
+    </div>
+    <p>Bomba: <b>{{ bomba ? 'ENCENDIDA' : 'apagada' }}</b></p>
+    <label class="switch">
+      <input type="checkbox" [checked]="modoAuto" (change)="cambiarAuto()" />
+      Riego automático
+    </label>
+    <button [disabled]="modoAuto" (click)="cambiarBomba()">
+      {{ bomba ? 'Apagar bomba' : 'Regar ahora' }}
+    </button>
+  </section>
+
+  <section class="card">
+    <h2>Seguridad</h2>
+    <p>
+      Distancia:
+      @if (distancia !== null) {
+      <b>{{ distancia.toFixed(1) }} cm</b>
+      } @else {
+      <b>--</b>
+      }
+    </p>
+    <p>Presencia cercana: <b>{{ presencia ? 'SÍ' : 'no' }}</b></p>
+    <label class="switch">
+      <input type="checkbox" [checked]="alarmaActiva" (change)="cambiarAlarma()" />
+      Alarma activada
+    </label>
+  </section>
+
+  <section class="card">
+    <h2>Espantapájaros</h2>
+    <p>Sensor de movimiento: <b>{{ pir ? 'DETECTA' : 'sin movimiento' }}</b></p>
+    <p>
+      Servo:
+      <b [class.activo]="espantoMoviendo">{{ espantoMoviendo ? 'MOVIÉNDOSE' : 'en reposo' }}</b>
+    </p>
+    <label class="switch">
+      <input type="checkbox" [checked]="espantoActivo" (change)="cambiarEspanto()" />
+      Espantapájaros habilitado
+    </label>
+  </section>
+
+  <section class="card">
+    <h2>Iluminación</h2>
+    <p>Luz: <b>{{ luz ? 'encendida' : 'apagada' }}</b></p>
+    <button (click)="cambiarLuz()">
+      {{ luz ? 'Apagar luz' : 'Encender luz' }}
+    </button>
+  </section>
+
+  <section class="card grafica">
+    <h2>Humedad de la tierra (%)</h2>
+    <svg viewBox="0 0 600 200" preserveAspectRatio="none">
+      <line x1="20" y1="190" x2="580" y2="190" stroke="#334155" />
+      <polyline [attr.points]="puntosSuelo" fill="none" stroke="#22c55e" stroke-width="3" />
+    </svg>
+  </section>
+
+  <section class="card grafica">
+    <h2>Temperatura (°C)</h2>
+    <svg viewBox="0 0 600 200" preserveAspectRatio="none">
+      <line x1="20" y1="190" x2="580" y2="190" stroke="#334155" />
+      <polyline [attr.points]="puntosTemp" fill="none" stroke="#f59e0b" stroke-width="3" />
+    </svg>
+  </section>
+
+  <section class="card eventos">
+    <h2>Eventos</h2>
+    <ul>
+      @for (ev of eventos; track $index) {
+      <li><small>{{ ev.hora }}</small> {{ ev.msg }}</li>
+      } @empty {
+      <li>Sin eventos todavía</li>
+      }
+    </ul>
+  </section>
+
+</main>
