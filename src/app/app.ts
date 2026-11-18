@@ -148,9 +148,9 @@ export class App implements OnInit, OnDestroy {
   readonly tiposEvento: { clave: TipoEvento; nombre: string; color: string; icono: string }[] = [
     { clave: 'alerta',  nombre: 'Alertas',        color: '#ef4444', icono: '🚨' },
     { clave: 'riego',   nombre: 'Riego',          color: '#38bdf8', icono: '💧' },
-    { clave: 'espanto', nombre: 'Espantapájaros', color: '#f59e0b', icono: '🐦' },
+    { clave: 'espanto', nombre: 'Espantapájaros', color: '#f59e0b', icono: '🐦‍⬛' },
     { clave: 'alarma',  nombre: 'Alarma',         color: '#a78bfa', icono: '🔔' },
-    { clave: 'luz',     nombre: 'Luz',            color: '#facc15', icono: '💡' }
+    { clave: 'luz',     nombre: 'Luz',            color: '#facc15', icono: '🔦' }
   ];
   resumenEventos: ResumenEvento[] = [];
   eventosFiltrados: Evento[] = [];
