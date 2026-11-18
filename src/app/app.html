@@ -1,108 +1,261 @@
-<header>
-  <h1>Maqueta IoT</h1>
-  <div class="conexion">
-    <span class="punto" [class.ok]="conectadoBroker"></span>
-    Broker: {{ conectadoBroker ? 'conectado' : 'desconectado' }}
-    <span class="punto" [class.ok]="conectadoESP32"></span>
-    ESP32: {{ conectadoESP32 ? 'en línea' : 'fuera de línea' }}
+<header class="topbar">
+  <div class="titulo">
+    <h1>Maqueta IoT</h1>
+    <small>Última actualización: {{ ultimaActualizacion }}</small>
+  </div>
+  <div class="barra-estado">
+    <span class="chip-estado" [class.ok]="conectadoBroker"><i class="punto"></i> Broker</span>
+    <span class="chip-estado" [class.ok]="conectadoESP32"><i class="punto"></i> ESP32</span>
+    <button class="icono" (click)="sonido = !sonido" [attr.title]="sonido ? 'Silenciar alertas' : 'Activar sonido'">
+      {{ sonido ? '🔔' : '🔕' }}
+    </button>
+    <button class="icono" (click)="cambiarTema()" title="Cambiar tema">
+      {{ tema === 'oscuro' ? '☀️' : '🌙' }}
+    </button>
   </div>
 </header>
 
-@if (intrusion) {
-<div class="alerta">
-  ALERTA: se detectó una presencia
-  <button (click)="confirmarAlerta()">Entendido</button>
-</div>
-}
+<div class="contenido">
 
-<main>
+  @if (intrusion) {
+  <div class="alerta">
+    <span>🚨 ALERTA: se detectó una presencia</span>
+    <button class="btn-blanco" (click)="confirmarAlerta()">Entendido</button>
+  </div>
+  }
 
-    <section class="card">
-    <h2>Ambiente</h2>
-    <p class="grande">{{ temp ?? '--' }} °C</p>
-    <p>Humedad del aire: {{ hum ?? '--' }} %</p>
-    <small>Última actualización: {{ ultimaActualizacion }}</small>
+  <!-- Plantilla reutilizable para las graficas -->
+  <ng-template #grafica let-g="g" let-id="id">
+    <svg viewBox="0 0 600 220" class="svg-grafica" (mouseleave)="ocultarTip()">
+
+      @for (b of g.bandas; track $index) {
+      <rect x="38" width="550" [attr.y]="b.y" [attr.height]="b.alto" [attr.fill]="b.color" />
+      }
+
+      @for (t of g.ejeY; track $index) {
+      <line x1="38" x2="588" [attr.y1]="t.y" [attr.y2]="t.y" class="rejilla" />
+      <text x="32" [attr.y]="t.y + 4" class="eje" text-anchor="end">{{ t.etiqueta }}</text>
+      }
+
+      @for (t of g.ejeX; track $index) {
+      <text [attr.x]="t.x" y="214" class="eje" text-anchor="middle">{{ t.etiqueta }}</text>
+      }
+
+      @for (l of g.lineas; track $index) {
+      <line x1="38" x2="588" [attr.y1]="l.y" [attr.y2]="l.y" [attr.stroke]="l.color"
+            stroke-width="1.5" stroke-dasharray="6 4" />
+      <text x="584" [attr.y]="l.y - 4" class="eje" text-anchor="end" [attr.fill]="l.color">{{ l.etiqueta }}</text>
+      }
+
+      @for (s of g.series; track s.nombre) {
+        @if (s.area) {
+        <path [attr.d]="s.area" [attr.fill]="s.color" fill-opacity="0.15" />
+        }
+        <path [attr.d]="s.path" fill="none" [attr.stroke]="s.color" stroke-width="2.5"
+              stroke-linejoin="round" stroke-linecap="round" />
+        @for (p of s.puntos; track $index) {
+        <circle [attr.cx]="p.x" [attr.cy]="p.y" r="8" fill="transparent"
+                (mouseenter)="mostrarTip(id, p, s.color)" />
+        }
+      }
+
+      @if (tip && tip.grafica === id) {
+      <circle [attr.cx]="tip.x" [attr.cy]="tip.y" r="4.5" [attr.fill]="tip.color"
+              stroke="white" stroke-width="1.5" class="sin-puntero" />
+      <rect [attr.x]="tip.bx" [attr.y]="tip.by" [attr.width]="tip.ancho" height="24" rx="6"
+            class="tip-caja sin-puntero" />
+      <text [attr.x]="tip.bx + 7" [attr.y]="tip.by + 16" class="tip-texto sin-puntero">{{ tip.texto }}</text>
+      }
+    </svg>
+  </ng-template>
+
+  <!-- Medidores -->
+  <section class="kpis">
+
+    <article class="card kpi">
+      <h2>Temperatura</h2>
+      <div class="anillo" style="--c:#f59e0b" [style.--v]="(temp ?? 0) * 2">
+        <div class="anillo-centro"><b>{{ temp ?? '--' }}</b><small>°C</small></div>
+      </div>
+      <small>Rango del medidor: 0 a 50 °C</small>
+    </article>
+
+    <article class="card kpi">
+      <h2>Humedad del aire</h2>
+      <div class="anillo" style="--c:#38bdf8" [style.--v]="hum ?? 0">
+        <div class="anillo-centro"><b>{{ hum ?? '--' }}</b><small>%</small></div>
+      </div>
+      <small>Ambiente</small>
+    </article>
+
+    <article class="card kpi">
+      <h2>Tierra</h2>
+      <div [class]="'anillo ' + estadoSuelo" [style.--v]="suelo ?? 0">
+        <div class="anillo-centro"><b>{{ suelo ?? '--' }}</b><small>%</small></div>
+      </div>
+      <small [class]="'texto-' + estadoSuelo">{{ textoSuelo }}</small>
+    </article>
+
+    <article class="card kpi">
+      <h2>Seguridad</h2>
+      <p class="grande">
+        @if (distancia !== null) { {{ distancia.toFixed(0) }} cm } @else { -- }
+      </p>
+      <div class="barra">
+        <div [style.width.%]="cercania" [class.peligro]="presencia"></div>
+      </div>
+      <small>Presencia cercana: <b>{{ presencia ? 'SÍ' : 'no' }}</b></small>
+      <small>Movimiento (PIR): <b>{{ pir ? 'detectado' : 'sin movimiento' }}</b></small>
+    </article>
+
   </section>
 
-  <section class="card">
-    <h2>Tierra y riego</h2>
-    <p class="grande">{{ suelo ?? '--' }} %</p>
-    <div class="barra">
-      <div [style.width.%]="suelo ?? 0"></div>
+  <!-- Controles -->
+  <section class="card controles">
+    <h2>Controles @if (!conectadoESP32) { <span class="aviso">ESP32 fuera de línea</span> }</h2>
+
+    <div class="rejilla-controles">
+
+      <label class="fila">
+        <span>Riego automático <small>{{ modoAuto ? 'activado' : 'manual' }}</small></span>
+        <span class="toggle">
+          <input type="checkbox" [checked]="modoAuto" [disabled]="!conectadoESP32" (change)="cambiarAuto($event)" />
+          <span class="slider"></span>
+        </span>
+      </label>
+
+      <div class="fila">
+        <span>Bomba
+          <small [class.bomba-activa]="bomba">{{ bomba ? '💧 ENCENDIDA' : 'apagada' }}</small>
+        </span>
+        <button class="btn" [disabled]="modoAuto || !conectadoESP32" (click)="cambiarBomba()">
+          {{ bomba ? 'Apagar' : 'Regar ahora' }}
+        </button>
+      </div>
+
+      <label class="fila">
+        <span>Luz <small>{{ luz ? 'encendida' : 'apagada' }}</small></span>
+        <span class="toggle">
+          <input type="checkbox" [checked]="luz" [disabled]="!conectadoESP32" (change)="cambiarLuz($event)" />
+          <span class="slider"></span>
+        </span>
+      </label>
+
+      <label class="fila">
+        <span>Alarma <small>{{ alarmaActiva ? 'armada' : 'desactivada' }}</small></span>
+        <span class="toggle">
+          <input type="checkbox" [checked]="alarmaActiva" [disabled]="!conectadoESP32" (change)="cambiarAlarma($event)" />
+          <span class="slider"></span>
+        </span>
+      </label>
+
+      <label class="fila">
+        <span>Espantapájaros
+          <small [class.bomba-activa]="espantoMoviendo">{{ espantoMoviendo ? '🐦 MOVIÉNDOSE' : 'en reposo' }}</small>
+        </span>
+        <span class="toggle">
+          <input type="checkbox" [checked]="espantoActivo" [disabled]="!conectadoESP32" (change)="cambiarEspanto($event)" />
+          <span class="slider"></span>
+        </span>
+      </label>
+
     </div>
-    <p>Bomba: <b>{{ bomba ? 'ENCENDIDA' : 'apagada' }}</b></p>
-    <label class="switch">
-      <input type="checkbox" [checked]="modoAuto" (change)="cambiarAuto()" />
-      Riego automático
-    </label>
-    <button [disabled]="modoAuto" (click)="cambiarBomba()">
-      {{ bomba ? 'Apagar bomba' : 'Regar ahora' }}
-    </button>
   </section>
 
-  <section class="card">
-    <h2>Seguridad</h2>
-    <p>
-      Distancia:
-      @if (distancia !== null) {
-      <b>{{ distancia.toFixed(1) }} cm</b>
-      } @else {
-      <b>--</b>
-      }
-    </p>
-    <p>Presencia cercana: <b>{{ presencia ? 'SÍ' : 'no' }}</b></p>
-    <label class="switch">
-      <input type="checkbox" [checked]="alarmaActiva" (change)="cambiarAlarma()" />
-      Alarma activada
-    </label>
+  <!-- Barra de graficas -->
+  <div class="herramientas">
+    <span>Mostrar últimos</span>
+    @for (n of rangos; track n) {
+    <button class="chip-filtro" [class.sel]="rango === n" (click)="cambiarRango(n)">{{ n }}</button>
+    }
+    <span>puntos</span>
+    <button class="btn secundario" (click)="descargarCSV()">⬇ Descargar CSV</button>
+  </div>
+
+  <!-- Graficas de lecturas -->
+  <section class="graficas">
+
+    <article class="card">
+      <h2>Humedad de la tierra</h2>
+      <ng-container *ngTemplateOutlet="grafica; context: { g: graficaSuelo, id: 'suelo' }" />
+      <div class="leyenda">
+        <span><i style="background:#ef4444"></i> Zona seca (riega)</span>
+        <span><i style="background:#22c55e"></i> Zona óptima</span>
+      </div>
+    </article>
+
+    <article class="card">
+      <h2>Temperatura y humedad del aire</h2>
+      <ng-container *ngTemplateOutlet="grafica; context: { g: graficaClima, id: 'clima' }" />
+      <div class="leyenda">
+        @for (s of graficaClima.series; track s.nombre) {
+        <span><i [style.background]="s.color"></i> {{ s.nombre }}</span>
+        }
+      </div>
+    </article>
+
+    <article class="card">
+      <h2>Distancia del sensor</h2>
+      <ng-container *ngTemplateOutlet="grafica; context: { g: graficaDistancia, id: 'distancia' }" />
+      <div class="leyenda">
+        <span><i style="background:#a78bfa"></i> Distancia</span>
+        <span><i style="background:#ef4444"></i> Si baja de la línea, salta la alarma</span>
+      </div>
+    </article>
+
   </section>
 
-  <section class="card">
-    <h2>Espantapájaros</h2>
-    <p>Sensor de movimiento: <b>{{ pir ? 'DETECTA' : 'sin movimiento' }}</b></p>
-    <p>
-      Servo:
-      <b [class.activo]="espantoMoviendo">{{ espantoMoviendo ? 'MOVIÉNDOSE' : 'en reposo' }}</b>
-    </p>
-    <label class="switch">
-      <input type="checkbox" [checked]="espantoActivo" (change)="cambiarEspanto()" />
-      Espantapájaros habilitado
-    </label>
+  <!-- Eventos -->
+  <section class="eventos-zona">
+
+    <article class="card resumen">
+      <h2>Resumen de eventos</h2>
+
+      <div class="dona-caja">
+        <div class="dona" [style.background]="donaFondo">
+          <div class="dona-centro"><b>{{ totalEventos }}</b><small>eventos</small></div>
+        </div>
+      </div>
+
+      <div class="resumen-lista">
+        @for (r of resumenEventos; track r.clave) {
+        <button class="resumen-fila" (click)="cambiarFiltro(r.clave)">
+          <span><i class="cuadro" [style.background]="r.color"></i> {{ r.icono }} {{ r.nombre }}</span>
+          <b>{{ r.cantidad }} <small>({{ r.porcentaje }}%)</small></b>
+        </button>
+        }
+      </div>
+
+      <div class="datos-riego">
+        <div><small>Riegos</small><b>{{ riegoVeces }}</b></div>
+        <div><small>Tiempo regando</small><b>{{ riegoTexto }}</b></div>
+      </div>
+    </article>
+
+    <article class="card lista-eventos">
+      <h2>Historial de eventos</h2>
+
+      <div class="chips">
+        <button class="chip-filtro" [class.sel]="filtro === 'todos'" (click)="cambiarFiltro('todos')">Todos</button>
+        @for (t of tiposEvento; track t.clave) {
+        <button class="chip-filtro" [class.sel]="filtro === t.clave" (click)="cambiarFiltro(t.clave)">
+          {{ t.icono }} {{ t.nombre }}
+        </button>
+        }
+      </div>
+
+      <ul>
+        @for (ev of eventosFiltrados; track $index) {
+        <li class="ev" [style.border-left-color]="ev.color">
+          <small class="ev-hora">{{ ev.hora }}</small>
+          <span>{{ ev.icono }} {{ ev.msg }}</span>
+        </li>
+        } @empty {
+        <li class="vacio">Sin eventos todavía</li>
+        }
+      </ul>
+    </article>
+
   </section>
 
-  <section class="card">
-    <h2>Iluminación</h2>
-    <p>Luz: <b>{{ luz ? 'encendida' : 'apagada' }}</b></p>
-    <button (click)="cambiarLuz()">
-      {{ luz ? 'Apagar luz' : 'Encender luz' }}
-    </button>
-  </section>
-
-  <section class="card grafica">
-    <h2>Humedad de la tierra (%)</h2>
-    <svg viewBox="0 0 600 200" preserveAspectRatio="none">
-      <line x1="20" y1="190" x2="580" y2="190" stroke="#334155" />
-      <polyline [attr.points]="puntosSuelo" fill="none" stroke="#22c55e" stroke-width="3" />
-    </svg>
-  </section>
-
-  <section class="card grafica">
-    <h2>Temperatura (°C)</h2>
-    <svg viewBox="0 0 600 200" preserveAspectRatio="none">
-      <line x1="20" y1="190" x2="580" y2="190" stroke="#334155" />
-      <polyline [attr.points]="puntosTemp" fill="none" stroke="#f59e0b" stroke-width="3" />
-    </svg>
-  </section>
-
-  <section class="card eventos">
-    <h2>Eventos</h2>
-    <ul>
-      @for (ev of eventos; track $index) {
-      <li><small>{{ ev.hora }}</small> {{ ev.msg }}</li>
-      } @empty {
-      <li>Sin eventos todavía</li>
-      }
-    </ul>
-  </section>
-
-</main>
+</div>
