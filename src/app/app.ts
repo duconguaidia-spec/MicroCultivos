@@ -80,7 +80,7 @@ interface Tooltip {
 export class App implements OnInit, OnDestroy {
 
   // Mismo despliegue EMQX que usa el ESP32 (puerto 8084 para WebSocket seguro)
-  private brokerUrl = 'j123125d.ala.eu-central-1.emqxsl.com:8084/mqtt';   // <-- CAMBIAR
+  private brokerUrl = 'wss://j123125d.ala.eu-central-1.emqxsl.com:8084/mqtt';   // <-- CAMBIAR
 
   // Usuario propio del dashboard (creado en Authentication de EMQX)
   private usuario = 'esp32';

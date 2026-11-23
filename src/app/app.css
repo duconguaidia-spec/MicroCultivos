@@ -1,10 +1,12 @@
 :host {
-  --fondo: #02112e;
-  --tarjeta: #131c2e;
-  --borde: #02064a;
-  --texto: #e2e8f0;
-  --suave: #94a3b8;
-  --pista: #26324a;
+  --fondo: #0a1410;
+  --tarjeta: #11201a;
+  --borde: #1f3a2e;
+  --texto: #e6f4ec;
+  --suave: #8fb3a0;
+  --pista: #1f3a2e;
+  --acento: #10b981;
+  --acento-hover: #059669;
 
   display: block;
   min-height: 100vh;
@@ -21,9 +23,9 @@
   --texto: #0f172a;
   --suave: #64748b;
   --pista: #e2e8f0;
+  --acento: #3b82f6;
+  --acento-hover: #2563eb;
 }
-
-
 
 /* ---------- Encabezado ---------- */
 .topbar {
@@ -102,12 +104,12 @@
   padding: 8px 16px;
   border: 0;
   border-radius: 10px;
-  background: #3b82f6;
+  background: var(--acento);
   color: white;
   font-weight: 600;
   cursor: pointer;
 }
-.btn:hover:not(:disabled) { background: #2563eb; }
+.btn:hover:not(:disabled) { background: var(--acento-hover); }
 .btn:disabled { background: var(--pista); color: var(--suave); cursor: not-allowed; }
 .btn.secundario { background: transparent; border: 1px solid var(--borde); color: var(--texto); }
 .btn.secundario:hover { background: var(--pista); }
@@ -237,7 +239,7 @@
   font-size: 0.85rem;
 }
 .chip-filtro:hover { background: var(--pista); }
-.chip-filtro.sel { background: #3b82f6; border-color: #3b82f6; color: white; }
+.chip-filtro.sel { background: var(--acento); border-color: var(--acento); color: white; }
 
 /* ---------- Graficas ---------- */
 .graficas {
